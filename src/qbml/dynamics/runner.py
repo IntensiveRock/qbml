@@ -13,16 +13,17 @@ from tqdm import tqdm
 from qbml.dynamics.simulation import simulation
 from qbml.ml.tomographydataset import TomographyDataSet
 
-
-@hydra.main(version_base=None, config_path=f'{os.getcwd()}/configs/setgen/')
+# Generalize config path and add fields to the configuration to fascilitate saving to correct places.
+## Change cli to just take the total config path. Break that shit down with pathlib.
+## config needs to contain some important paths like project root directory prjroot: /home/dewdrop/pypkgs/nonmarkov/
+## Currently, the command in the command line works.
+## also change the cli to just run this script with the config
+## i still wonder if having the other cli tools is the easiest way.
+## try running the script from another script before proceeding.
+@hydra.main(version_base=None)
 def main(cfg: DictConfig):
-
-    # Ensure the user follows the proper procedure.
-    assert cfg.title != "pleasechange", "Please change the title by passing: qmltomography -cn <configname> title=<title_name> and that the config is in the PWD/configs/setgen/ directory!"
-
     # Get pathing set for save.
-    cwd = Path(os.getcwd())
-    set_path = cwd / 'data' / cfg.title
+    set_path = Path(cfg.prj_dir) / 'data' / cfg.title
     os.mkdir(set_path)
     output_dir = Path(hydra.core.hydra_config.HydraConfig.get().runtime.output_dir)
 
@@ -33,16 +34,16 @@ def main(cfg: DictConfig):
     "cm-1 ns": 5.3088e-3,
     "cm-1 us": 5.3088e-6,
     "MHz us" : 0.15915,
-    "dimless": 1.0,
+    "dimensionless": 1.0,
     }
     k = {"cm-1 K-1": 0.695,
          "MHz K-1" : 2.0835e4,
-         "dimless" : 1.}
+         "dimensionless" : 1.}
     c = {
         "cm GHz": 30,
         "cm MHz": 3e4,
         "cm THz": 3e7,
-        "dimless": 1.,
+        "dimensionless": 1.,
     }
     random.seed(cfg.simulation_parameters.seed)
 
@@ -78,7 +79,7 @@ def main(cfg: DictConfig):
     TIMES = times * qubit_frequency / HBAR
     FREQS = np.arange(cfg.simulation_parameters.ω_min,
                       cfg.simulation_parameters.ω_max,
-                      cfg.simulation_parameters.N_freqs)
+                      cfg.simulation_parameters.dω) * HBAR / qubit_frequency
 
     # Initialize the data storage for simulations.
     tomography = np.zeros((cfg.simulation_parameters.num_sims,
@@ -91,7 +92,7 @@ def main(cfg: DictConfig):
     # Run the simulations.
     for sim in tqdm(range(cfg.simulation_parameters.num_sims)):
         tomo, spds, R_ij = simulation(
-            cfg.specden.spd_type,
+            cfg.specden.type,
             cfg.specden.random,
             cfg.specden.params,
             β,
@@ -103,10 +104,9 @@ def main(cfg: DictConfig):
             SYS_HAMI,
             SB_HAMI,
             ρ_0,
-            cfg.specden.max_peaks
         )
         for i, spd in enumerate(spds):
-            spectral_densities[sim, :, i] += spd(FREQS, restore_dims=True) * spd.reorg_ratio
+            spectral_densities[sim, :, i] += spd(FREQS)
         tomography[sim] += np.real(tomo)
         spd_params.append([vars(spd) for i in spds])
 
