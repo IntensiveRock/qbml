@@ -16,7 +16,12 @@ dependencies = [
 ]
 
 [project.scripts]
-qbml = "qbml:main"
+qmltomography = "qbml.dynamics.runner:main"
+qmltfp = "qbml.dynamics.predictionrunner:main"
+qmlviewer = "qbml.dynamics.viewer:main"
+qmlmviewer = "qbml.dynamics.splitrunner:main"
+qmltrain = "qbml.ml.train:main"
+qbml = "qbml.cli.qbml:cli"
 
 [build-system]
 requires = ["hatchling"]
