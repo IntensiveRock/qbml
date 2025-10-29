@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from qbml.dynamics.hami import Hami
-from qbml.redfield import Redfield
+from qbml.dynamics.redfield import Redfield
 import qbml.dynamics.spectraldensity as SPD
 from qbml.dynamics.tools import rand_given_range
 
@@ -25,11 +25,9 @@ def simulation(
 ) -> np.array:
     # Generate random spectral densities.
     spd_class = getattr(SPD, spd_type)
+    which_bath = {0 : "x", 1 : "z"}
     if rand_spd:
-        SPECDEN = [spd_class.rand(spd_params, HBAR, qubit_frequency, β) for _ in range(N_BATHS)]
-        norm, scale = spd_params.scale
-        # if norm:
-        #     SPECDEN = [SPD.NormalizedSpecDen(spd, random.uniform(scale[0], scale[1])/qubit_frequency) for spd in SPECDEN]
+        SPECDEN = [spd_class.rand(spd_params[which_bath[i]], HBAR, qubit_frequency, BETA) for i in range(N_BATHS)]
 
     # Run dynamics.
     HAMI = Hami(SYS_HAMI, 0, SB_HAMI, SPECDEN, TIMES[1])
