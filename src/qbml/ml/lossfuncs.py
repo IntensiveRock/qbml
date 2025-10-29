@@ -1,0 +1,27 @@
+import torch
+from torch import nn
+
+
+class MSELoss_Positive_Definite(nn.Module):
+
+    __constants__ = ["reduction"]
+
+    def __init__(
+            self,
+            reduction : str = "mean",
+            negative_value_punishment : float = 0,
+    ):
+        super().__init__()
+        self.reduction = reduction
+        self.nvp = negative_value_punishment
+
+
+    def forward(
+            self,
+            pred : torch.Tensor,
+            target : torch.Tensor,
+    ) -> torch.Tensor:
+        mse_loss = (pred - target) ** 2
+        minus_mask = pred < 0
+        nvp_loss = self.nvp * torch.numel(pred[minus_mask])
+        return torch.mean(mse_loss) + nvp_loss

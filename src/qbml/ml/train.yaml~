@@ -1,0 +1,23 @@
+# Name of model, loss, and optimizer.
+cfg_info:
+  name:
+  device: cuda
+  model: qubitml.ml.transformer.Transformer()
+  loss_fn: qubitml.ml.lossfuncs.MSELoss_Positive_Definite
+  optimizer: torch.optim.Adam
+# Hyperparmeters for the training.
+model_hyperparmeters:
+  batch_size: 10
+  learning_rate: 1e-4
+  weight_decay: 2
+  loss_nvp: 2  # Penalty per negative prediction. Specific to loss_fn.
+  epochs: 100
+# What are the sequence lengths and how to partition the dataset.
+dataset:
+  split: [0.9, 0.1]
+  input_seq_len: 500
+  target_seq_len: 400
+
+paths: # Define where the data is and resulting files should be stored.
+  model_storage: ../models/trainednetworks/torch/encdronly/
+  log: ../reports/traininghistories/encdronly/

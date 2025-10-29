@@ -1,0 +1,81 @@
+import logging
+from omegaconf import DictConfig, OmegaConf
+import numpy as np
+from tqdm import tqdm
+
+import qbml.nonmarkov.estimaterft as qbmlmnm
+
+
+_logger = logging.getLogger(__name__)
+
+def generate_guess_rfts(x_range, z_range, cfgpth : DictConfig):
+    """
+    Generate a set of guess Markovian Redfield tensors given reorganization energies.
+    """
+    cfg = OmegaConf.load(cfgpth)
+    HBAR = {
+        "cm-1 fs": 5308.8,
+        "cm-1 ps": 5.3088,
+        "cm-1 ns": 5.3088e-3,
+        "cm-1 us": 5.3088e-6,
+        "MHz us" : 0.15915,
+        "dimensionless": 1.0,
+    }
+    k = {
+        "cm-1 K-1": 0.695,
+         "MHz K-1" : 2.0835e4,
+         "dimensionless" : 1.
+    }
+    c = {
+        "cm GHz": 30,
+        "cm MHz": 3e4,
+        "cm THz": 3e7,
+        "dimensionless": 1.,
+    }
+
+    # Define the units and constants.
+    HBAR = HBAR[cfg.units.hbar]
+    SoL = c[cfg.units.speed_of_light]
+
+    # Model parameters.
+    ε_in_frequency = cfg.system.epsilon_frequency
+    Δ_in_frequency = cfg.system.delta_frequency
+    ε = ε_in_frequency / SoL  # Convert frequency to wavenumber
+    Δ = Δ_in_frequency / SoL  # Convert frequency to wavenumber
+    qubit_frequency = (Δ ** 2 + ε ** 2) ** 0.5
+    SYS_HAMI = np.array([[ε,  Δ],
+                         [Δ, -ε]])
+    SB_HAMI = np.array(cfg.coupling.sb_operators)
+    N_BATHS = len(SB_HAMI)
+
+    # Simulation specific parameters.
+    T = cfg.simulation_parameters.temperature
+    kT = k[cfg.units.k] * T
+    β = 1 / kT  # * k
+    # print("The value of β is: ", β)
+    t_min = cfg.simulation_parameters.t_min
+    t_max = cfg.simulation_parameters.t_max
+    δt = cfg.simulation_parameters.dt
+    times = np.arange(t_min, t_max, δt)
+
+    # Nondimensionalize by qubit frequency and ħ.
+    SYS_HAMI = SYS_HAMI / qubit_frequency
+    BETA = β * qubit_frequency
+    TIMES = times * qubit_frequency / HBAR
+
+    # x_params = np.arange(x_range[0],x_range[1],x_range[2])
+    # z_params = np.arange(z_range[0],z_range[1],z_range[2])
+    varying_rotations = []
+    for x in tqdm(x_range):
+        for z in tqdm(z_range):
+            rotations, spds, rft = qbmlmnm.generate_guess_rft(
+                sys_hami=SYS_HAMI,
+                sb_hami=SB_HAMI,
+                beta=BETA,
+                times=TIMES,
+                guess_reorgs=[x,z],
+                qubit_frequency=qubit_frequency,
+                N_BATHS=N_BATHS,
+                hbar=HBAR,)
+            varying_rotations.append(qbmlmnm.RedfieldTensorGuess(x, z, rft, rotations, spds))
+    return varying_rotations, x_range, z_range

@@ -1,0 +1,10 @@
+import os
+from pathlib import Path
+import click
+
+
+@click.command()
+@click.option('--loc', default='.', help='Where to build the project structure. Default: current directory. Please use the full path.')
+def main(loc):
+    if loc == '.':
+        dir_path = os.getcwd()

@@ -1,0 +1,176 @@
+import os
+from pathlib import Path
+
+import numpy as np
+import torch
+from torch import nn
+from tqdm import tqdm
+
+from qubitml.ml.attention import MultiheadAttention
+from qubitml.ml.feedforward import FeedForward
+
+
+class Transformer(nn.Module):
+    
+    def __init__(
+        self,
+        n_encoders: int,
+        n_embd: int,
+        src_len: int,
+        n_tgt: int,
+        pred_len: int = None,
+        hidden_dim: int = False,
+        device: str = "cpu",
+        linear: bool = False,
+        model_name: str = None,
+    ) -> Transformer:
+        """
+        Construct a QubitML Transformer with specific hyperparameters as described below.
+
+        :param n_encoders:
+        :type n_encoders:
+        :param src_len:
+        :type src_len:
+        :param n_tgt:
+        :type n_tgt:
+        :param pred_len:
+        :type pred_len:
+        :param hidden_dim:
+        :type hidden_dim:
+        :param device:
+        :type device:
+        :param linear:
+        :type linear:
+        :param model_name:
+        :type model_name:
+        
+        """
+        super().__init__()
+        self.src_len = src_len
+        self.n_tgt = n_tgt
+        self.pred_len = pred_len
+        self.model_name = model_name
+        self.n_embd = n_embd
+        self.num_heads = n_embd
+        self.hidden_dim = hidden_dim
+        self.device = device
+        self.enc_pos_emb = nn.Embedding(src_len, n_embd)
+        self.encoder_stack = nn.ModuleList([EncoderBlock(n_embd, self.num_heads) for _ in n_encoders])
+        self.ff_pred_len = FeedForward(src_len, 0.0, pred_len)
+        self.ff_sembd_tembd = FeedForward(n_embd, 0.0, n_tgt)
+
+
+    def encode(self, x: torch.Tensor) -> torch.Tensor:
+        """Encode part of the forward pass."""
+        x = x + self.enc_pos_emb(torch.arange(x.size(-2), device=self.device))
+        for block in self.encoder_stack:
+            x = block(x)
+        return x
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Define the forward pass for the NN."""
+        enc_output = self.encode(x)
+        change_embd = self.ff_sembd_tembd(enc_output)
+        change_embd_T = change_embd.transpose(-2, -1)
+        logits = self.ff_pred_len(change_embd_T)
+        return logits.transpose(-2, -1)
+
+    def train_loop(self, dataloader, loss_fn, optimizer):
+        """Define the training loop for the neural network."""
+        self.train()
+        training_loss = 0
+        for batch, (src, tgt) in enumerate(dataloader):
+            src = src.to(self.device)
+            tgt = tgt.to(self.device)
+            logits = self(src)
+            loss = loss_fn(logits, tgt)
+            training_loss += loss.item()
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+        return training_loss / len(dataloader)
+
+    def val_loop(self, dataloader, loss_fn):
+        """Define the validation loop for the neural network."""
+        self.eval()
+        val_loss = 0
+        for batch, (src, tgt) in enumerate(dataloader):
+            src = src.to(device=self.device)
+            tgt = tgt.to(device=self.device)
+            logits = self(src)
+            loss = loss_fn(logits, tgt)
+            val_loss += loss.item()
+        return val_loss / len(dataloader)
+
+    def trainer(
+        self,
+        train_loader: torch.utils.data.DataLoader,
+        val_loader: torch.utils.data.DataLoader,
+        loss_fn,
+        optimizer,
+        epochs: int,
+        writer,
+        incr_save: list = None,
+        model_pth: Path = None,
+        model_name: str = None,
+    ):
+        """Define the training loop that runs training and validation."""
+        if not incr_save:
+            for epoch in tqdm(range(epochs)):
+                ep_train_loss = self.train_loop(train_loader, loss_fn, optimizer)
+                ep_val_loss = self.val_loop(val_loader, loss_fn)
+                writer.add_scalar("Loss/Training", ep_train_loss, epoch + 1)
+                writer.add_scalar("Loss/Validation", ep_val_loss, epoch + 1)
+        else:
+            os.mkdir(f"{model_pth}/{model_name}")
+            save_epochs = np.isin(range(epochs), incr_save)
+            for epoch in tqdm(range(epochs)):
+                ep_train_loss = self.train_loop(train_loader, loss_fn, optimizer)
+                ep_val_loss = self.val_loop(val_loader, loss_fn)
+                writer.add_scalar("Loss/Training", ep_train_loss, epoch + 1)
+                writer.add_scalar("Loss/Validation", ep_val_loss, epoch + 1)
+                if save_epochs[epoch]:
+                    torch.save(
+                        self,
+                        f"{model_pth}/{model_name}/{model_name}-epochs-{epoch+1}.pth",
+                    )
+
+    def predict(self, dataloader: torch.utils.data.DataLoader) -> torch.Tensor:
+        """Make predictions with the trained network."""
+        self.eval()
+        batch_logits = torch.zeros(
+            len(dataloader), dataloader.batch_size, self.pred_len, self.n_tgt
+        )
+        for batch, (src, tgt) in tqdm(enumerate(dataloader)):
+            src = src.to(device=self.device)
+            logits = self(src)
+            batch_logits[batch] += logits
+        return batch_logits
+
+
+class EncoderBlock(nn.Module):
+    """
+    A transformer encoder block.
+
+    This block contains all elements of the encoder.
+    """
+
+    def __init__(self, n_embd: int, num_heads: int, dropout: float = 0.0):
+        """Initialize the encoder block."""
+        super().__init__()
+        self.mha = MultiheadAttention(num_heads, n_embd)
+        self.layer_norm_1 = nn.LayerNorm(n_embd)
+        self.feed_forward = FeedForward(n_embd, dropout)
+        self.layer_norm_2 = nn.LayerNorm(n_embd)
+
+    def forward(self, x):
+        """Define the forward pass for the encoder block."""
+        x = self.layer_norm_1(x + self.mha(x, x, x))
+        out = self.layer_norm_2(x + self.feed_forward(x))
+        return out
+
+
+def trunc(val, decs):
+    """Truncate values."""
+    tmp = np.trunc(val * 10**decs)
+    return tmp / 10**decs

@@ -1,0 +1,28 @@
+# Define some important global values. Redefine later for readability.
+bs: &batch_size 10
+learning_rate: &lr 1e-4
+config_info: # Define the name of the config and the model.
+  name: EncoderOnly-dimlesstphysical1-7-22-24
+  model_name: EncoderOnly
+  model: qubitml.nnpartstorch.EncoderOnly()
+params: # Define some of the hyperparms. Mostly for readability.
+  device: cuda
+  batch_size: *batch_size
+  epochs: 100
+  lr: *lr
+  split: [0.9, 0.1]
+  src_len: 500
+  pred_len: 400
+paths: # Define where the data is and resulting files should be stored.
+  model_storage: ../models/trainednetworks/torch/encdronly/
+  log: ../reports/traininghistories/encdronly/
+  inputs: ../data/training/dimlesstphysical1-len-10000-inputs.npy
+  targets: ../data/training/dimlesstphysical1-len-10000-targets.npy
+
+loss: # Define the loss function and the parameters.
+  loss_fn: MSELoss
+  loss: nn.MSELoss
+optim: # Define the optimizer and params.
+  optimizer: Adam
+  lr: *lr
+  weight_decay: 2

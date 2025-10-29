@@ -1,0 +1,41 @@
+title: pleasechange
+units:
+  time: dimensionless
+  energy: dimensionless
+  frequency: dimensionless
+  k: dimensionless
+  hbar: dimensionless
+  speed_of_light: dimensionless
+simulation_parameters:
+  seed: 12345
+  num_sims: 1
+  t_min: 0
+  t_max: 10.
+  dt: 0.001
+  ω_min: 0
+  ω_max: 1000
+  dω: 0.001
+  temperature: 0.4
+  initial_condition: [0.5,0.5,0.5,0.5]
+system:
+  epsilon_frequency: 5.0
+  delta_frequency: 1.0
+coupling:
+  sb_operators: [[[0.,1.],[1.,0.]],[[1.,0.],[0.,-1.]]]
+  # sb_operators: [[[1.,0.],[0.,-1.]]]
+specden:
+  type: Lorentzians
+  random: True
+  params:
+    nmarkovian:
+      centers: [1,25]
+      heights: [1,5]
+      widths: [1,3]
+      scale: [False, [0.01,0.01]]
+      n_peaks: 1
+    markovian:
+      centers: [560,1000]
+      heights: [1,5]
+      widths: [5,10]
+      scale: [False, [0.001,0.001]]
+      n_peaks: 1

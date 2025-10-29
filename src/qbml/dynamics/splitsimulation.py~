@@ -1,0 +1,49 @@
+import random
+import logging
+import numpy as np
+import matplotlib.pyplot as plt
+
+from qubitml.dynamics.hami import Hami
+from qubitml.dynamics.splitredfield import SplitRedfield
+import qubitml.dynamics.spectraldensity as SPD
+
+_logger = logging.getLogger(__name__)
+
+def simulation(
+        spd_type: str,
+        rand_spd: bool,
+        spd_params: dict,
+        β: float, # has dimensions
+        BETA: float, # no dimensions
+        HBAR: float,
+        qubit_frequency: float,
+        TIMES: np.array,
+        N_BATHS: int,
+        SYS_HAMI: np.array,
+        SB_HAMI: np.array,
+        ρ_0: np.array,
+        
+) -> np.array:
+    # Generate random spectral densities.
+    logging.basicConfig(level=logging.INFO)
+    spd_class = getattr(SPD, spd_type)
+    if rand_spd:
+        nmSPECDEN = [spd_class.rand(spd_params.nmarkovian, HBAR, qubit_frequency, BETA) for _ in range(N_BATHS)]
+        mSPECDEN = [spd_class.rand(spd_params.markovian, HBAR, qubit_frequency, BETA) for _ in range(N_BATHS)]
+
+    # Run dynamics.
+    HAMI = Hami(SYS_HAMI, 0, SB_HAMI, nmSPECDEN, TIMES[1])
+    _logger.info('Constructing SplitRedfield object (making BCFs)')
+    r = SplitRedfield(HAMI,
+                      BETA,
+                      TIMES,
+                      hbar=HBAR,
+                      nonmarkovian_spds=nmSPECDEN,
+                      markovian_spds=mSPECDEN)
+    _logger.info('Finished BCFs')
+    rdm = np.array(r.propagate(ρ_0))
+    sigma_x = np.expand_dims(rdm[:, 1] + rdm[:, 2], axis=-1)
+    sigma_y = np.expand_dims(1j * rdm[:, 1] - 1j * rdm[:, 2], axis=-1)
+    sigma_z = np.expand_dims(rdm[:, 0] - rdm[:, 3], axis=-1)
+    spins_t = np.concatenate((sigma_x, sigma_y, sigma_z), axis=-1)
+    return spins_t, nmSPECDEN, mSPECDEN, [r.R_nm_ij, r.R_m_ij]

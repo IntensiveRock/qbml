@@ -1,0 +1,74 @@
+import logging
+from pathlib import Path
+
+import hydra
+from omegaconf import DictConfig
+import torch
+from torch import nn
+from torch.utils.tensorboard import SummaryWriter
+
+import qubitml.ml.transformer as ec
+import qubitml.nnpartstorch.spindatasetgen as datagen
+
+
+@hydra.main(version_base=None, config_path="../configs")
+def main(cfg: DictConfig) -> None:
+    """
+    Train QubitML neural network.
+
+    :param cfg: Configuration file containing hyperparmeters and paths to data
+    :type cfg: DictConfig
+    """
+    print(cfg)
+    cfg = cfg.encdronly
+    # Define some paths for saving data and config name.
+    WRITER_PATH = Path(cfg.paths.log)
+    MODEL_SAVE = Path(cfg.paths.model_storage)
+    CONFIG_NAME = str(cfg.config_info.name)
+    MODEL_NAME = str(cfg.config_info.model_name)
+
+    # Define the params of the training.
+    BATCH_SIZE = cfg.params.batch_size
+    DEVICE = str(cfg.params.device)
+    EPOCHS = cfg.params.epochs
+    DEVICE = cfg.params.device
+    writer = SummaryWriter(f"{WRITER_PATH}/cfg-{CONFIG_NAME}-md-{MODEL_NAME}")
+
+    train_loader, test_loader = datagen.train_test_loader(
+        Path(cfg.paths.inputs),
+        Path(cfg.paths.targets),
+        cfg.params.split,
+        BATCH_SIZE,
+    )
+    model_name = f"cfg-{CONFIG_NAME}-m-{MODEL_NAME}"
+    model = ec.EncoderOnly(
+        n_encoders=8,
+        n_embd=cfg.params.n_embd,
+        src_len=cfg.params.src_len,
+        n_tgt=cfg.params.n_tgt,
+        pred_len=cfg.params.pred_len,
+        device=DEVICE,
+        model_name=model_name,
+    )
+    model = model.to(device=DEVICE)
+    loss_fn = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+    model.trainer(
+        train_loader,
+        test_loader,
+        loss_fn,
+        optimizer,
+        EPOCHS,
+        writer,
+        incr_save=[25, 50, 75],
+        model_pth=MODEL_SAVE,
+        model_name=model_name,
+    )
+
+    torch.save(model, f"{MODEL_SAVE}/{model_name}.pth")
+    writer.flush()
+
+
+if __name__ == "__main__":
+    main()
