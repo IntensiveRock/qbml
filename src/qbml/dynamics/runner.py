@@ -14,13 +14,7 @@ from qbml.dynamics.simulation import simulation
 from qbml.ml.tomographydataset import TomographyDataSet
 from qbml.ml.spddb import save_spddb
 
-# Generalize config path and add fields to the configuration to fascilitate saving to correct places.
-## Change cli to just take the total config path. Break that shit down with pathlib.
-## config needs to contain some important paths like project root directory prjroot: /home/dewdrop/pypkgs/nonmarkov/
-## Currently, the command in the command line works.
-## also change the cli to just run this script with the config
-## i still wonder if having the other cli tools is the easiest way.
-## try running the script from another script before proceeding.
+
 @hydra.main(version_base=None)
 def main(cfg: DictConfig):
     # Get pathing set for save.
