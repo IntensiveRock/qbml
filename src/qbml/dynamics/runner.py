@@ -12,6 +12,7 @@ from tqdm import tqdm
 
 from qbml.dynamics.simulation import simulation
 from qbml.ml.tomographydataset import TomographyDataSet
+from qbml.ml.spddb import save_spddb
 
 # Generalize config path and add fields to the configuration to fascilitate saving to correct places.
 ## Change cli to just take the total config path. Break that shit down with pathlib.
@@ -108,7 +109,8 @@ def main(cfg: DictConfig):
         for i, spd in enumerate(spds):
             spectral_densities[sim, :, i] += spd(FREQS)
         tomography[sim] += np.real(tomo)
-        spd_params.append([vars(spd) for i in spds])
+        # spd_params.append([vars(spd) for i in spds])
+        spd_params.append(spds)
 
     # Create the Tomographydataset.
     dataset = TomographyDataSet(tomography,
@@ -117,8 +119,9 @@ def main(cfg: DictConfig):
                                 FREQS,
                                 torch.from_numpy)
     torch.save(dataset, set_path / f'{cfg.title}.ds')
-    with open(set_path / f'{cfg.title}.params', 'wb') as outp:
-        pickle.dump(spd_params, outp, pickle.HIGHEST_PROTOCOL)
+    save_spddb(spd_params, cfg.title, set_path)
+    # with open(set_path / f'{cfg.title}.params', 'wb') as outp:
+    #     pickle.dump(spd_params, outp, pickle.HIGHEST_PROTOCOL)
     shutil.move(output_dir / '.hydra', set_path / 'hydra')
 
 if __name__ == "__main__":

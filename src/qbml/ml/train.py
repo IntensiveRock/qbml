@@ -2,11 +2,11 @@ import logging
 import os
 import shutil
 from pathlib import Path
+import wandb
 
 import hydra
 from omegaconf import DictConfig
 import torch
-from torch import nn
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
@@ -19,28 +19,28 @@ from qbml.dynamics.tools import count_parameters
 # I think it should be a well defined workflow that other should conform to.
 # To do this. Make a working directory. In that directory, make a config directory.
 # Put your configs in this directory, python train.py +cfg_subdir=cfg
-@hydra.main(version_base=None, config_path=f'{os.getcwd()}/configs/training/')
-def main(cfg: DictConfig) -> None:
+@hydra.main(version_base=None)
+def main(cfg: DictConfig):
+    # Get pathing set for save.
+
     """
     Train QubitML neural network.
 
     :param cfg: Configuration file containing hyperparmeters and paths to data
     :type cfg: DictConfig
     """
-    assert cfg.name != "", "Please make sure to name the training by passing qmltrain -cn <configname> name=<mdl_name> set_path=</path/to/dataset/>."
-    # Ensure save path.
-    cwd = Path(os.getcwd())
-    training_history_path = cwd / 'models' / Path(cfg.name)
-    log_path = cwd / 'logs'
+    
+    training_history_path = Path(cfg.prj_dir) / 'data' / cfg.title
+    # log_path = Path(cfg.prj_dir) / 'logs'
     output_dir = Path(hydra.core.hydra_config.HydraConfig.get().runtime.output_dir)
     os.mkdir(training_history_path)
     os.mkdir(training_history_path / 'predictions')
 
     # Define the params of the training.
-    BATCH_SIZE = cfg.model_hyperparameters.batch_size
-    EPOCHS = cfg.model_hyperparameters.epochs
+    BATCH_SIZE = cfg.wandb_cfg.config.batch_size
+    EPOCHS = cfg.wandb_cfg.config.epochs
     DEVICE = cfg.cfg_info.device
-    writer = SummaryWriter(f'{log_path}/{cfg.name}')
+    # writer = SummaryWriter(f'{log_path}/{cfg.name}')
 
     # Create dataloader from dataset.
     tomo_dataset = torch.load(f'{cfg.set_path}', weights_only=False)
@@ -48,43 +48,50 @@ def main(cfg: DictConfig) -> None:
     src_len = len(tomo)
     train_loader, validation_loader = tgd.construct_qubitml_dataloader(
         tomography_set=tomo_dataset,
-        mdl_input_seq_len=cfg.model_hyperparameters.input_seq_len,
-        mdl_target_seq_len=cfg.model_hyperparameters.target_seq_len,
+        mdl_input_seq_len=cfg.wandb_cfg.config.input_seq_len,
+        mdl_target_seq_len=cfg.wandb_cfg.config.target_seq_len,
         shuffle=True,
         batch_size=BATCH_SIZE,
         split=cfg.dataset.split,
     )
     # Spawn the model.
     model = Transformer(
-        n_encoders=cfg.model_hyperparameters.n_encoders,
+        n_encoders=cfg.wandb_cfg.config.n_encoders,
         n_embd=3,
         n_heads=3,
         src_len=src_len,
         n_tgt=2,
-        pred_len=cfg.model_hyperparameters.target_seq_len,
+        pred_len=cfg.wandb_cfg.config.target_seq_len,
         device=DEVICE,
-        rectifier=cfg.model_hyperparameters.rectifier,
-        block_size=cfg.model_hyperparameters.block_size,
+        rectifier=cfg.wandb_cfg.config.rectifier,
+        block_size=cfg.wandb_cfg.config.block_size,
     )
     model = model.to(device=DEVICE)
     loss_fn = qmloss.MSELoss_Positive_Definite(
-        negative_value_punishment=cfg.model_hyperparameters.loss_nvp
+        negative_value_punishment=cfg.wandb_cfg.config.loss_nvp
     )
     count_parameters(model)
     optimizer = torch.optim.Adam(
         model.parameters(),
-        lr=cfg.model_hyperparameters.learning_rate,
-        weight_decay=cfg.model_hyperparameters.weight_decay,
+        lr=cfg.wandb_cfg.config.learning_rate,
+        weight_decay=cfg.wandb_cfg.config.weight_decay,
     )
+    wandb.init(project=cfg.wandb_cfg.project,
+               entity=cfg.wandb_cfg.entity,
+               job_type=cfg.wandb_cfg.job_type,
+               config=cfg.wandb_cfg.config)
     for epoch in tqdm(range(EPOCHS)):
         train_loss = model.train_loop(train_loader, loss_fn, optimizer)
         val_loss = model.val_loop(validation_loader, loss_fn)
-        writer.add_scalar("Loss/Training", train_loss, epoch + 1)
-        writer.add_scalar("Loss/Validation", val_loss, epoch + 1)
+        wandb.log({"training loss" : train_loss})
+        wandb.log({"validation loss" : val_loss})
+        # writer.add_scalar("Loss/Training", train_loss, epoch + 1)
+        # writer.add_scalar("Loss/Validation", val_loss, epoch + 1)
 
     # Save all that shit.
     torch.save(model, training_history_path / 'model.pth')
-    writer.flush()
+    # writer.flush()
+    wandb.finish()
     shutil.move(output_dir / '.hydra', training_history_path / 'hydra')
 
 
