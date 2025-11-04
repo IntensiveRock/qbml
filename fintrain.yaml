@@ -1,10 +1,11 @@
 # Name of model, loss, and optimizer.
-title:
-prj_dir:
+title: diditwork
+prj_dir: /home/dewdrop/pyuv/scqtest/nm
 wandb_cfg:
-  project:
-  entity:
-  job_type:
+  project: qbml
+  entity: froggycham-cu-boulder-chemistry
+  job_type: training
+  name: diditwork
   config:
     n_encoders: 1
     batch_size: 10
@@ -17,11 +18,11 @@ wandb_cfg:
     rectifier: gelu
     block_size: 500
 cfg_info:
-  device: cuda
+  device: cpu
   model: qubitml.ml.transformer.Transformer()
   loss_fn: qubitml.ml.lossfuncs.MSELoss_Positive_Definite
   optimizer: torch.optim.Adam
 # What are the sequence lengths and how to partition the dataset.
 dataset:
   split: [0.9, 0.1]
-set_path: ""
+set_path: /home/dewdrop/pyuv/scqtest/nm/data/mnm/mnm.ds

@@ -83,18 +83,19 @@ def train_models():
     pass
 
 @train_models.command()
-@click.option('-cn', help="The name of the config in the training directory.")
-@click.argument('modelname', required=True)
-@click.argument('datapath', type=click.Path(exists=True))
+@click.option('-c', '--config-pth', help="The name of the config in the training directory.")
 @click.argument('overrides', nargs=-1)
-def train(cn, modelname, datapath, overrides):
+def train(config_pth, overrides):
     """
     Train a model.
     """
+    cfg_path = Path(config_pth)
+    cfg_dir = cfg_path.parent
+    cfg_name = cfg_path.stem
     override_string = ""
     for override in overrides:
         override_string += override + " "
-    os.system(f'qmltrain -cn {cn} name={modelname} set_path={datapath} {override_string}')
+    os.system(f'qmltrain -cp {cfg_dir} -cn {cfg_name} {override_string}')
 
 
 @click.group()
