@@ -6,7 +6,6 @@ import multiprocessing as mp
 import numpy as np
 import torch
 from scipy.interpolate import CubicSpline
-from torch import nn
 from torch import Tensor
 from torch.utils.data import DataLoader, Dataset, random_split
 from tqdm import tqdm
@@ -243,47 +242,6 @@ def _assert_seq_len(
         _logger.critical(
             "The provided sequence is larger than the model sequence length!"
         )
-
-class FitTomo(nn.Module):
-
-    def __init__(
-            self,
-            initial_frq : float = 1.,
-    ):
-        super().__init__()
-        self.w_q = nn.Parameter(
-            torch.Tensor([initial_frq]),
-            requires_grad=True
-        )
-        self.exp_w = nn.Parameter(
-            torch.rand(4, dtype=torch.float) * 0.1,
-            requires_grad=True
-        )
-        self.linear_w = nn.Parameter(
-            torch.rand(2, dtype=torch.float) * 0.01,
-            requires_grad=True
-        )
-        self.quad_w = nn.Parameter(
-            torch.rand(1, dtype=torch.float) * 0.01,
-            requires_grad=True
-        )
-        self.scale = nn.Parameter(
-            torch.rand(1, dtype=torch.float),
-            requires_grad=True
-        )
-
-    def forward(
-            self,
-            x_tensor : torch.Tensor,
-    ):
-        sigma_x = torch.exp(-self.exp_w[0] * x_tensor) * torch.cos(self.w_q * x_tensor) - self.linear_w[0] * x_tensor + self.quad_w[0] * x_tensor
-        sigma_y = torch.exp(-self.exp_w[1] * x_tensor) * torch.sin(self.w_q * x_tensor)
-        sigma_z = (torch.exp(-self.exp_w[2] * x_tensor) * torch.cos(self.w_q * x_tensor + torch.pi) + torch.exp(-self.exp_w[3] * x_tensor)  - self.linear_w[1] * x_tensor) * self.scale
-        sigma_x = sigma_x.unsqueeze(1)
-        sigma_y = sigma_y.unsqueeze(1)
-        sigma_z = sigma_z.unsqueeze(1)
-        return torch.cat((sigma_x, sigma_y, sigma_z), 1)
-    
 
 
 def fit(fitter, dataloader, loss_fn, optimizer, time_axis, idx : int):
