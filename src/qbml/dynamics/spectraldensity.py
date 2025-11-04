@@ -45,7 +45,7 @@ class SpecDen:
         omegas = omegas[1:]
         j_w = self(omegas)
         reorg = (1 / np.pi) * np.trapz(j_w / omegas, omegas)
-        return tgt_reorg / reorg, omegas
+        return tgt_reorg / reorg
 
 
 class NormalizedSpecDen(SpecDen):
@@ -107,8 +107,8 @@ class Lorentzians(SpecDen):
         self.heights = heights
         self.widths = widths
         self.beta = beta
-        self.omega_infinity = max(self.centers) + max(self.centers)
-        self.scaling_constant, self.omegas = self._calc_reorg_scaling_constant(tgt_reorg)
+        self.omega_infinity = (1.5 * max(self.centers)) + (30 * max(self.widths))
+        self.scaling_constant = self._calc_reorg_scaling_constant(tgt_reorg)
 
     def __call__(
             self,
