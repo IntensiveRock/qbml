@@ -70,6 +70,7 @@ def main(cfg: DictConfig):
         lr=cfg.wandb_cfg.config.learning_rate,
         weight_decay=cfg.wandb_cfg.config.weight_decay,
     )
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.5)
     with wandb.init(
             project=cfg.wandb_cfg.project,
             entity=cfg.wandb_cfg.entity,
@@ -80,8 +81,10 @@ def main(cfg: DictConfig):
         for epoch in tqdm(range(EPOCHS)):
             train_loss = model.train_loop(train_loader, loss_fn, optimizer)
             val_loss = model.val_loop(validation_loader, loss_fn)
+            scheduler.step()
             run.log({"training loss" : train_loss})
             run.log({"validation loss" : val_loss})
+            run.log({"learning rate" : scheduler.get_last_lr()})
 
     torch.save(model, training_history_path / 'model.pth')
     wandb.finish()
