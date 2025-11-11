@@ -133,11 +133,11 @@ class Lorentzians(SpecDen):
                       n_peaks : int}
         """
         n_peaks = spd_params.n_peaks
-        centers = [random.uniform(spd_params["centers"][0],spd_params["centers"][1])*hbar/qfreq for _ in range(n_peaks)]
+        centers = [random.uniform(spd_params["centers"][0],spd_params["centers"][1]) for _ in range(n_peaks)]
         heights = [random.uniform(spd_params["heights"][0],spd_params["heights"][1]) for _ in range(n_peaks)]
-        widths = [random.uniform(spd_params["widths"][0],spd_params["widths"][1])*hbar/qfreq for _ in range(n_peaks)]
+        widths = [random.uniform(spd_params["widths"][0],spd_params["widths"][1]) for _ in range(n_peaks)]
         norm, scale = spd_params.scale
-        reorganization_energy = random.uniform(scale[0], scale[1])/qfreq
+        reorganization_energy = random.uniform(scale[0], scale[1])
         return cls(centers, heights, widths, beta, reorganization_energy)
 
 
