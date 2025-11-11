@@ -1,5 +1,4 @@
 import os
-import pickle
 import random
 import shutil
 from pathlib import Path
@@ -114,8 +113,6 @@ def main(cfg: DictConfig):
                                 torch.from_numpy)
     torch.save(dataset, set_path / f'{cfg.title}.ds')
     save_spddb(spd_params, cfg.title, set_path)
-    # with open(set_path / f'{cfg.title}.params', 'wb') as outp:
-    #     pickle.dump(spd_params, outp, pickle.HIGHEST_PROTOCOL)
     shutil.move(output_dir / '.hydra', set_path / 'hydra')
 
 if __name__ == "__main__":

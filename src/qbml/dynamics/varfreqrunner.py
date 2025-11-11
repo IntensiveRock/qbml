@@ -10,7 +10,7 @@ import numpy as np
 from tqdm import tqdm
 
 from qbml.dynamics.simulation import simulation
-from qbml.ml.tomographydataset import TomographyDataSet
+from qbml.ml.variablefreqdataset import VariableFreqDataSet
 from qbml.ml.spddb import save_spddb
 
 
@@ -57,14 +57,10 @@ def main(cfg: DictConfig):
     δt = cfg.simulation_parameters.dt
     times = np.arange(t_min, t_max, δt)
 
-    # Need all to be in units of qubit frequency so its the same across sims.
-    # What still needs to be scaled?
-    # - Beta
-    # - Hamiltonian
-    TIMES = times # * qubit_frequency / HBAR
+    TIMES = times
     FREQS = np.arange(cfg.simulation_parameters.ω_min,
                       cfg.simulation_parameters.ω_max,
-                      cfg.simulation_parameters.dω) # * HBAR / qubit_frequency
+                      cfg.simulation_parameters.dω)
 
     # Initialize the data storage for simulations.
     tomography = np.zeros((cfg.simulation_parameters.num_sims,
@@ -100,18 +96,23 @@ def main(cfg: DictConfig):
         for i, spd in enumerate(spds):
             spectral_densities[sim, :, i] += spd(FREQS)
         tomography[sim] += np.real(tomo)
-        # spd_params.append([vars(spd) for i in spds])
         spd_params.append(spds)
 
     # Create the Tomographydataset.
-    dataset = TomographyDataSet(tomography,
-                                spectral_densities,
-                                times,
-                                FREQS,
-                                torch.from_numpy)
+    dataset = VariableFreqDataSet(tomography,
+                                  spectral_densities,
+                                  times,
+                                  FREQS,
+                                  [ɛ_and_Δ for ɛ_and_Δ in zip(ɛ_list, Δ_list)],
+                                  torch.from_numpy)
     torch.save(dataset, set_path / f'{cfg.title}.ds')
     save_spddb(spd_params, cfg.title, set_path)
     shutil.move(output_dir / '.hydra', set_path / 'hydra')
+    if cfg.to_pics:
+        dataset.to_pics()
+        os.system("feh tmp")
+        if not cfg.save_pics:
+            os.system("rm -r tmp")
 
 if __name__ == "__main__":
     main()
