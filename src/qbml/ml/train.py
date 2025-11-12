@@ -70,7 +70,7 @@ def main(cfg: DictConfig):
         lr=cfg.wandb_cfg.config.learning_rate,
         weight_decay=cfg.wandb_cfg.config.weight_decay,
     )
-    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.5)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer)
     with wandb.init(
             project=cfg.wandb_cfg.project,
             entity=cfg.wandb_cfg.entity,
