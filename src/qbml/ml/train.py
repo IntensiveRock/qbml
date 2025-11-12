@@ -85,6 +85,14 @@ def main(cfg: DictConfig):
             run.log({"training loss" : train_loss})
             run.log({"validation loss" : val_loss})
             run.log({"learning rate" : scheduler.get_last_lr()})
+            if (epoch + 1) % cfg.checkpoint_frq == 0:
+                torch.save({
+                    'epoch': epoch,
+                    'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'tloss': train_loss,
+                    'vloss': val_loss,
+                }, training_history_path / f'ep-{epoch}-model.pth')
 
     torch.save(model, training_history_path / 'model.pth')
     wandb.finish()
