@@ -81,7 +81,7 @@ def main(cfg: DictConfig):
         for epoch in tqdm(range(EPOCHS)):
             train_loss = model.train_loop(train_loader, loss_fn, optimizer)
             val_loss = model.val_loop(validation_loader, loss_fn)
-            scheduler.step()
+            scheduler.step(val_loss)
             run.log({"training loss" : train_loss})
             run.log({"validation loss" : val_loss})
             run.log({"learning rate" : scheduler.get_last_lr()})
