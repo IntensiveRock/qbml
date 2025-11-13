@@ -78,6 +78,21 @@ def tfp(cn, setname, setpth):
     """
     os.system(f'qmltfp -cn {cn} title={setname} ++predictions={setpth}')
 
+@run_dynamics.command()
+@click.option('-c', '--config-pth', help="Full path to configuration file.")
+@click.arguments('overrides', nargs=-1)
+def vftomo(config_pth, overrides):
+    """
+    Generate datasets containing multiple qubit frequencies.
+    """
+    cfg_path = Path(config_pth)
+    cfg_dir = cfg_path.parent
+    cfg_name = cfg_path.stem
+    override_string = ""
+    for override in overrides:
+        override_string += override + " "
+    os.system(f'qmlvftomo -cp {cfg_dir} -cn {cfg_name} {override_string}')
+
 @click.group()
 def train_models():
     pass

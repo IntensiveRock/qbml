@@ -21,6 +21,7 @@ dependencies = [
 
 [project.scripts]
 qmltomography = "qbml.dynamics.runner:main"
+qmlvftomo = "qbml.dynamics.varfreqrunner:main"
 qmltfp = "qbml.dynamics.predictionrunner:main"
 qmlviewer = "qbml.dynamics.viewer:main"
 qmlmviewer = "qbml.dynamics.splitrunner:main"
