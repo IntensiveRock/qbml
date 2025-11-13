@@ -80,7 +80,7 @@ def tfp(cn, setname, setpth):
 
 @run_dynamics.command()
 @click.option('-c', '--config-pth', help="Full path to configuration file.")
-@click.arguments('overrides', nargs=-1)
+@click.argument('overrides', nargs=-1)
 def vftomo(config_pth, overrides):
     """
     Generate datasets containing multiple qubit frequencies.
