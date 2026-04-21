@@ -71,7 +71,7 @@ def generate_guess_rft(
     SPECDEN = [Lorentzians(
         centers=[100.], # in units of qfreq
         heights=[1.], # doesn't matter, gets rescaled
-        widths=[1.5], # May matter
+        widths=[10.], # May matter
         beta=beta, # Needs to be the dimensionless one
         tgt_reorg=guess_reorgs[i],
     ) for i in range(N_BATHS)]

@@ -151,7 +151,7 @@ class Redfield:
             # May need changed. Need results first.
             R_ij_t_array = np.array(
                 [
-                    np.trapz(
+                    np.trapezoid(
                         R_ij_integrand[: t_index + 1, i, j], self.times[: t_index + 1]
                     )
                     for i in range(self.n**2)

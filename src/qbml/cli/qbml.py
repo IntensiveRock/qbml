@@ -42,6 +42,21 @@ def tomo(config_pth, overrides):
     os.system(f'qmltomography -cp {cfg_dir} -cn {cfg_name} {override_string}')
 
 @run_dynamics.command()
+@click.option('-c', '--config-pth',  help="Full path to dataset configuration file.", type=click.Path(exists=True))
+@click.argument('overrides', nargs=-1)
+def tomorft(config_pth, overrides):
+    """
+    Generate qubit tomography datasets to predict R(t).
+    """
+    cfg_path = Path(config_pth)
+    cfg_dir = cfg_path.parent
+    cfg_name = cfg_path.stem
+    override_string = ""
+    for override in overrides:
+        override_string += override + " "
+    os.system(f'qmltomorft -cp {cfg_dir} -cn {cfg_name} {override_string}')
+
+@run_dynamics.command()
 @click.option('-cn', help="The name of the config in the setgen directory")
 @click.argument('setname', required=True)
 @click.argument('overrides', nargs=-1)

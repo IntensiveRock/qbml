@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import integrate
 
 # from qubitml.dynamics.spectraldensity import SpecDen
 
@@ -44,14 +45,16 @@ class RedfieldBCF(BathCorrelationFunction):
     def _calc_bcf(self, time : np.array) -> np.array:
         bcf = np.zeros((len(time)), dtype=complex)
         j_w = self.jw
-        freqs = np.linspace(0., j_w.omega_infinity, 10000)
+        freqs = np.linspace(0., j_w.omega_infinity*20, 1000000)
         freqs = freqs[1:]
         calc_j_w = j_w(freqs)
         for t_index, t in enumerate(time):
             bcf_integrand_real = calc_j_w*_coth(freqs*self.beta/2)*np.cos(freqs*t)
             bcf_integrand_imag = calc_j_w*np.sin(freqs*t)
-            bcf_real = np.trapz(bcf_integrand_real, freqs)
-            bcf_imag = np.trapz(bcf_integrand_imag, freqs)
+            bcf_real = np.trapezoid(bcf_integrand_real, freqs)
+            bcf_imag = np.trapezoid(bcf_integrand_imag, freqs)
+            # bcf_real = integrate.simpson(bcf_integrand_real, freqs)
+            # bcf_imag = integrate.simpson(bcf_integrand_imag, freqs)
             bcf_t = (1 / np.pi) * (bcf_real - 1j * bcf_imag)
             bcf[t_index] += bcf_t
         return bcf
@@ -77,8 +80,8 @@ class FarFrequencyBCF(BathCorrelationFunction):
         for t_index, t in enumerate(time):
             bcf_integrand_real = calc_j_w*np.cos(freqs*t)
             bcf_integrand_imag = calc_j_w*np.sin(freqs*t)
-            bcf_real = np.trapz(bcf_integrand_real, freqs)
-            bcf_imag = np.trapz(bcf_integrand_imag, freqs)
+            bcf_real = np.trapezoid(bcf_integrand_real, freqs)
+            bcf_imag = np.trapezoid(bcf_integrand_imag, freqs)
             bcf_t = (1 / np.pi) * (bcf_real - 1j * bcf_imag)
             bcf[t_index] += bcf_t
         return bcf

@@ -44,7 +44,7 @@ class SpecDen:
         omegas = np.linspace(0, self.omega_infinity, 100000)
         omegas = omegas[1:]
         j_w = self(omegas)
-        reorg = (1 / np.pi) * np.trapz(j_w / omegas, omegas)
+        reorg = (1 / np.pi) * np.trapezoid(j_w / omegas, omegas)
         return tgt_reorg / reorg
 
 
@@ -73,7 +73,7 @@ class NormalizedSpecDen(SpecDen):
         omegas = np.linspace(0, spd.omega_infinity, 10000)
         omegas = omegas[1:]
         j_w = spd(omegas)
-        reorg = (1 / np.pi) * np.trapz(j_w / omegas, omegas)
+        reorg = (1 / np.pi) * np.trapezoid(j_w / omegas, omegas)
         return tgt_reorg / reorg, omegas
 
 
@@ -223,16 +223,16 @@ class NonMarkovLorentz(SpecDen):
             # Compute the low part
             bcf_integrand_real = calc_j_w_low*_coth(low_freqs*self.beta/2)*np.cos(low_freqs*t)
             bcf_integrand_imag = calc_j_w_low*np.sin(low_freqs*t)
-            bcf_real = np.trapz(bcf_integrand_real, low_freqs)
-            bcf_imag = np.trapz(bcf_integrand_imag, low_freqs)
+            bcf_real = np.trapezoid(bcf_integrand_real, low_freqs)
+            bcf_imag = np.trapezoid(bcf_integrand_imag, low_freqs)
             bcf_t = (1 / np.pi) * (bcf_real - 1j * bcf_imag)
             bcf[t_index] += bcf_t
             # Compute the hi part
             bcf_hi_integrand_real = calc_j_w_hi*np.cos(hi_freqs*t)
             bcf_hi_integrand_imag = calc_j_w_hi*np.sin(hi_freqs*t)
 
-            bcf_hi_real = np.trapz(bcf_hi_integrand_real, hi_freqs)
-            bcf_hi_imag = np.trapz(bcf_hi_integrand_imag, hi_freqs)
+            bcf_hi_real = np.trapezoid(bcf_hi_integrand_real, hi_freqs)
+            bcf_hi_imag = np.trapezoid(bcf_hi_integrand_imag, hi_freqs)
             bcf_hi_t = (1 / np.pi) * (bcf_hi_real - 1j * bcf_hi_imag)
             bcf[t_index] += bcf_hi_t
             # if t_index % 500 == 0:
@@ -327,7 +327,7 @@ class TPSpecDen(SpecDen):
         omegas = np.linspace(0, np.max(params['dds'])*40, 10000)
         omegas = omegas[1:]
         j_w = self(omegas, restore_dims=restore_dims, setup=setup)
-        reorg = (1 / np.pi) * np.trapz(j_w / omegas, omegas)
+        reorg = (1 / np.pi) * np.trapezoid(j_w / omegas, omegas)
         return reorg, omegas
 
     def __call__(self, freq, restore_dims: bool = False, setup: bool = False):

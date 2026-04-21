@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.11"
 dependencies = [
     "click>=8.3.0",
+    "h5py>=3.16.0",
     "hydra-core>=1.3.2",
     "matplotlib>=3.10.7",
     "numpy>=2.3.4",
@@ -21,6 +22,7 @@ dependencies = [
 
 [project.scripts]
 qmltomography = "qbml.dynamics.runner:main"
+qmltomorft = "qbml.dynamics.rftrunner:main"
 qmlvftomo = "qbml.dynamics.varfreqrunner:main"
 qmltfp = "qbml.dynamics.predictionrunner:main"
 qmlviewer = "qbml.dynamics.viewer:main"
