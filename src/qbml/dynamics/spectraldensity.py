@@ -48,35 +48,6 @@ class SpecDen:
         return tgt_reorg / reorg
 
 
-class NormalizedSpecDen(SpecDen):
-    """
-    Normalized spectral density object.
-
-    Wraps any spectral density type. Ensures desired reorganization energy.
-    """
-    def __init__(self, spd : SpecDen, reorganization_energy : float):
-        self.spd = spd
-        self.reorganization_energy = reorganization_energy
-        self.scaling_constant, self.omegas = self._calc_reorg_scaling_constant(spd, reorganization_energy)
-        self.omega_infinity = spd.omega_infinity
-
-    def __call__(self, omegas):
-        """
-        Redefine call function to compute the normalized spectral density.
-        """
-        return self.scaling_constant * self.spd(omegas)
-
-    def _calc_reorg_scaling_constant(self, spd, tgt_reorg):
-        """
-        Compute the constant that scales spectral density to specified reorganization energy.
-        """
-        omegas = np.linspace(0, spd.omega_infinity, 10000)
-        omegas = omegas[1:]
-        j_w = spd(omegas)
-        reorg = (1 / np.pi) * np.trapezoid(j_w / omegas, omegas)
-        return tgt_reorg / reorg, omegas
-
-
 class DebyeSpecDen(SpecDen):
     """Debye Spectral Density."""
 
@@ -90,6 +61,55 @@ class DebyeSpecDen(SpecDen):
         self.reorg_ratio = 1
         self.dlreorg_ratio = 1
         self.omega_infinity = 20 * wc
+
+
+class Gaussians(SpecDen):
+    """
+    N-peak Gaussian shaped spectral density.
+
+    Place a normalized Gaussian at center and scale the height by a scalar.
+    """
+    def __init__(
+            self,
+            centers : list[float],
+            heights : list[float],
+            fwhms : list[float],
+            beta : float,
+            tgt_reorg : float = 1,
+    ):
+        self.centers = centers
+        self.heights = heights
+        self.fwhms = fwhms
+        self.beta = beta
+        self.omega_infinity = 4 * fwhms[np.argmax(centers)]
+        self.scaling_constant = self._calc_reorg_scaling_constant(tgt_reorg)
+
+    def __call__(
+            self,
+            freq : np.array,
+    ) -> np.array:
+        j_w = np.zeros_like(freq)
+        log2 = np.log(2)
+        for i in range(len(self.heights)):
+            j_w += self.heights[i] * np.exp(-4 * log2 * (freq - self.centers[i]) / self.fwhms[i]**2)
+        tanh_prefactor = np.tanh(freq * self.beta / 2)
+        return self.scaling_constant * tanh_prefactor * j_w
+
+    @classmethod
+    def rand(cls, spd_params : dict, qfreq : float, beta : float):
+        """
+        spd_params = {centers : [low, high],
+                      fwhms  : [low, high],
+                      scale   : [T/F, [low, high]],
+                      n_peaks : int}
+        """
+        n_peaks = spd_params.n_peaks
+        centers = [random.uniform(spd_params["centers"][0],spd_params["centers"][1]) for _ in range(n_peaks)]
+        heights = [random.uniform(spd_params["heights"][0],spd_params["heights"][1]) for _ in range(n_peaks)]
+        fwhms = [random.uniform(spd_params["fwhms"][0],spd_params["fwhms"][1]) for _ in range(n_peaks)]
+        norm, scale = spd_params.scale
+        reorganization_energy = random.uniform(scale[0], scale[1])
+        return cls(centers=centers, heights=heights, fwhms=fwhms, beta=beta, tgt_reorg=reorganization_energy)
 
 
 class Lorentzians(SpecDen):
@@ -120,11 +140,11 @@ class Lorentzians(SpecDen):
                 1 + ((np.sign(freq) * freq - self.centers[i]) / self.widths[i]) ** 2
             )
             j_w += term1
-            tanh_prefactor = np.tanh(freq * self.beta / 2)
+        tanh_prefactor = np.tanh(freq * self.beta / 2)
         return self.scaling_constant * tanh_prefactor * j_w
 
     @classmethod
-    def rand(cls, spd_params : dict, hbar : float, qfreq : float, beta : float):
+    def rand(cls, spd_params : dict, qfreq : float, beta : float):
         """
         spd_params = {centers : [low, high],
                       heights : [low, high],
@@ -139,117 +159,6 @@ class Lorentzians(SpecDen):
         norm, scale = spd_params.scale
         reorganization_energy = random.uniform(scale[0], scale[1])
         return cls(centers, heights, widths, beta, reorganization_energy)
-
-
-class NonMarkovLorentz(SpecDen):
-    """
-    Spectral density with low and very high frequency Lorentzian peaks.
-
-    One low frequency peak contributes to Non-Markovian evolution.
-    One high frequency peak drives Markovian evolution.
-    """
-    def __init__(self, low_center, hi_center, heights, widths, beta, tgt_reorg : float = 1):
-        self.centers = [low_center, hi_center]
-        self.heights = heights
-        self.widths = widths
-        self.beta = beta
-        self.omega_infinity = max(self.centers) + 0.2*hi_center
-        self.scaling_constant, self.omegas = self._calc_reorg_scaling_constant(tgt_reorg)
-
-    @classmethod
-    def rand(cls, spd_params : dict, hbar : float, qfreq : float, beta : float):
-        """
-        spd_params = {low_center : [low, high],
-                      hi_center  : [low, high],
-                      low_height : [low, high],
-                      hi_height  : [low, high],
-                      low_width  : [low, high],
-                      hi_width   : [low, high]}
-        """
-        # Add normalization to specified
-        low_center = random.uniform(spd_params["low_center"][0],spd_params["low_center"][1])
-        hi_center = random.uniform(spd_params["hi_center"][0],spd_params["hi_center"][1])
-        heights = [random.uniform(spd_params["low_height"][0],spd_params["low_height"][1]),
-                   random.uniform(spd_params["hi_height"][0],spd_params["hi_height"][1])]
-        widths = [random.uniform(spd_params["low_width"][0],spd_params["low_width"][1])*hbar/qfreq,
-                   random.uniform(spd_params["hi_width"][0],spd_params["hi_width"][1])*hbar/qfreq]
-        norm, scale = spd_params.scale
-        reorganization_energy = random.uniform(scale[0], scale[1])/qfreq
-        print(reorganization_energy)
-        return cls(low_center*hbar/qfreq, hi_center*hbar/qfreq, heights, widths, beta*qfreq, reorganization_energy)
-
-    def __call__(
-            self,
-            freq
-    ) -> np.array:
-        j_w = np.zeros_like(freq)
-        for i in range(len(self.heights)):
-            term1 = self.heights[i] / (
-                1 + ((np.sign(freq) * freq - self.centers[i]) / self.widths[i]) ** 2
-            )
-            j_w += term1
-            tanh_prefactor = np.tanh(freq * self.beta / 2)
-        return self.scaling_constant * tanh_prefactor * j_w
-
-    def computelow(self, freq):
-        j_w = np.zeros_like(freq)
-        term1 = self.heights[0] / (
-            1 + ((np.sign(freq) * freq - self.centers[0]) / self.widths[0]) ** 2
-        )
-        j_w += term1
-        tanh_prefactor = np.tanh(freq * self.beta / 2)
-        return self.scaling_constant * tanh_prefactor * j_w
-
-    def computehi(self, freq):
-        j_w = np.zeros_like(freq)
-        term1 = self.heights[1] / (
-            1 + ((np.sign(freq) * freq - self.centers[1]) / self.widths[1]) ** 2
-        )
-        j_w += term1
-        tanh_prefactor = np.tanh(freq * self.beta / 2)
-        return self.scaling_constant * tanh_prefactor * j_w
-
-    def construct_bcf(self, beta : float, time : np.array):
-        bcf = np.zeros((len(time)), dtype=complex)
-        center = self.centers[1]
-        lower_limit = center - (self.omega_infinity - center)
-        low_freqs = np.linspace(0, self.omega_infinity, 10000)
-        low_freqs = low_freqs[1:]
-        hi_freqs = np.linspace(lower_limit, self.omega_infinity, 100000)
-        hi_freqs = hi_freqs[1:]
-        calc_j_w_low = self.computelow(low_freqs)
-        calc_j_w_hi = self.computehi(hi_freqs)
-        for t_index, t in enumerate(time):
-            # Compute the low part
-            bcf_integrand_real = calc_j_w_low*_coth(low_freqs*self.beta/2)*np.cos(low_freqs*t)
-            bcf_integrand_imag = calc_j_w_low*np.sin(low_freqs*t)
-            bcf_real = np.trapezoid(bcf_integrand_real, low_freqs)
-            bcf_imag = np.trapezoid(bcf_integrand_imag, low_freqs)
-            bcf_t = (1 / np.pi) * (bcf_real - 1j * bcf_imag)
-            bcf[t_index] += bcf_t
-            # Compute the hi part
-            bcf_hi_integrand_real = calc_j_w_hi*np.cos(hi_freqs*t)
-            bcf_hi_integrand_imag = calc_j_w_hi*np.sin(hi_freqs*t)
-
-            bcf_hi_real = np.trapezoid(bcf_hi_integrand_real, hi_freqs)
-            bcf_hi_imag = np.trapezoid(bcf_hi_integrand_imag, hi_freqs)
-            bcf_hi_t = (1 / np.pi) * (bcf_hi_real - 1j * bcf_hi_imag)
-            bcf[t_index] += bcf_hi_t
-            # if t_index % 500 == 0:
-            #     pred_fig = plt.figure(layout="constrained")
-            #     gs = pred_fig.add_gridspec(nrows=2, ncols=1)
-            #     integrand_ax = pred_fig.add_subplot(gs[0])
-            #     integrated_ax = pred_fig.add_subplot(gs[1])
-            #     integrand_ax.plot(hi_freqs, bcf_hi_integrand_real, label='real')
-            #     integrand_ax.plot(hi_freqs, calc_j_w_hi, label=t)
-            #     integrand_ax.plot(hi_freqs, bcf_hi_integrand_imag, label='imag')
-            #     integrated_ax.plot(bcf[:t_index+1].real, label='Real BCF')
-            #     integrated_ax.plot(bcf[:t_index+1].imag, label='Imag BCF')
-            #     integrand_ax.legend()
-            #     integrated_ax.legend()
-            #     plt.show()
-        return bcf
-
 
 
 class TPSpecDen(SpecDen):
@@ -373,6 +282,37 @@ class SplineSpecDen(SpecDen):
         self.dlreorg_ratio = 1
         self.omega_infinity = freqs[200]
 
+
+
+class CompositeSpecDen(SpecDen):
+    """Combine multiple spectral density types together."""
+
+    def __init__(
+            self,
+            spd_list : list[SpecDen],
+            tgt_reorg : float,
+    ):
+        self.spds = spd_list
+        self.omega_infinity = np.max([spd.omega_infinity for spd in spd_list])
+        scaling_constant = self._calc_reorg_scaling_constant(tgt_reorg)
+        self._reset_spd_scaling_constants(scaling_constant)
+        self.scaling_constant = 1
+
+    def __call__(
+            self,
+            freq
+    ):
+        """Compute the value of J(ω) for the composite spectral density."""
+        j_w = np.zeros_like(freq)
+        for spd in self.spds:
+            j_w += spd(freq)
+        return self.scaling_constant * j_w
+
+    def _reset_spd_scaling_constants(self, scaling_constant):
+        """Recalculated the individual spd scaling constants."""
+        for spd in self.spds:
+            spd.scaling_constant *= scaling_constant
+        
 
 def _coth(w):
     return 1 / np.tanh(w)

@@ -1,16 +1,12 @@
 import random
 import numpy as np
-import matplotlib.pyplot as plt
 
 from qbml.dynamics.hami import Hami
 from qbml.dynamics.redfield import Redfield
 import qbml.dynamics.spectraldensity as SPD
-from qbml.dynamics.tools import rand_given_range
 
 
 def simulation(
-        spd_type: str,
-        rand_spd: bool,
         spd_params: dict,
         β: float, # has dimensions
         BETA: float, # no dimensions
@@ -23,11 +19,32 @@ def simulation(
         ρ_0: np.array,
 
 ) -> np.array:
-    # Generate random spectral densities.
-    spd_class = getattr(SPD, spd_type)
-    which_bath = {0 : "x", 1 : "z"}
-    if rand_spd:
-        SPECDEN = [spd_class.rand(spd_params[which_bath[i]], HBAR, qubit_frequency, BETA) for i in range(N_BATHS)]
+    coupling_assignment_keys = [key for key in spd_params.keys()]
+    SPECDEN = []
+    for coupling in coupling_assignment_keys:
+        coupling_params = spd_params[coupling]
+        types = [key for key in coupling_params.types.keys()]
+        ntypes = len(types)
+        if len(types) == 1:
+            spd_class = getattr(SPD, types[0])
+            SPECDEN.append(spd_class.rand(coupling_params.types[types[0]], qubit_frequency, BETA))
+        else:
+            # Random split the number of peaks
+            n_peaks_per_type = np.zeros((ntypes), dtype=int)
+            spdlist = []
+            for i in range(ntypes-1):
+                if np.sum(n_peaks_per_type) == coupling_params.n_peaks:
+                    break
+                else:
+                    n_peaks_per_type[i] += random.randint(0,coupling_params.n_peaks-np.sum(n_peaks_per_type))
+            n_peaks_per_type[-1] = coupling_params.n_peaks - np.sum(n_peaks_per_type)
+            for i, spd_type in enumerate(types):
+                if int(n_peaks_per_type[i]) == 0:
+                    break
+                spd_class = getattr(SPD, spd_type)
+                coupling_params.types[spd_type].n_peaks = int(n_peaks_per_type[i])
+                spdlist.append(spd_class.rand(coupling_params.types[spd_type], qubit_frequency, BETA))
+            SPECDEN.append(SPD.CompositeSpecDen(spdlist, random.uniform(coupling_params.total_reorg[0], coupling_params.total_reorg[1])))
 
     # Run dynamics.
     HAMI = Hami(SYS_HAMI, 0, SB_HAMI, SPECDEN, TIMES[1])

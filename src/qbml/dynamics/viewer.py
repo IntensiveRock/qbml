@@ -12,7 +12,7 @@ import numpy as np
 from qbml.dynamics.simulation import simulation
 
 
-@hydra.main(version_base=None, config_path=f'{os.getcwd()}/configs/setgen/')
+@hydra.main(version_base=None)
 def main(cfg: DictConfig):
 
     # Ensure the user follows the proper procedure.
@@ -83,8 +83,6 @@ def main(cfg: DictConfig):
     # Run the simulations.
     for sim in range(cfg.simulation_parameters.num_sims):
         tomo, spds, R_ij = simulation(
-            cfg.specden.type,
-            cfg.specden.random,
             cfg.specden.params,
             β,
             BETA,
@@ -125,7 +123,7 @@ def main(cfg: DictConfig):
                 tmp_axs.plot(TIMES, R_ij[:,i,j].real, color='black', lw=1)
                 tmp_axs.plot(TIMES, R_ij[:,i,j].imag, color='red', lw=1)
         plt.show()
-        spd_params.append([vars(spd) for i in spds])
+        # spd_params.append([vars(spd) for i in spds])
 
 
 if __name__ == "__main__":

@@ -57,17 +57,20 @@ def tomorft(config_pth, overrides):
     os.system(f'qmltomorft -cp {cfg_dir} -cn {cfg_name} {override_string}')
 
 @run_dynamics.command()
-@click.option('-cn', help="The name of the config in the setgen directory")
+@click.option('-c', '--config-pth', help="The name of the config in the setgen directory")
 @click.argument('setname', required=True)
 @click.argument('overrides', nargs=-1)
-def tomo_p(cn, setname, overrides):
+def tomo_p(config_pth, setname, overrides):
     """
     Plot tomography to visualize config.
     """
+    cfg_path = Path(config_pth)
+    cfg_dir = cfg_path.parent
+    cfg_name = cfg_path.stem
     override_string = ""
     for override in overrides:
         override_string += override + " "
-    os.system(f'qmlviewer -cn {cn} title={setname} {override_string}')
+    os.system(f'qmlviewer -cp {cfg_dir} -cn {cfg_name} title={setname} {override_string}')
 
 @run_dynamics.command()
 @click.option('-cn', help="The name of the config in the setgen directory")

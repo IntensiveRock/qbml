@@ -83,11 +83,10 @@ def main(cfg: DictConfig):
                                    len(FREQS),
                                    2))
     spd_params = []
+    assert len([key for key in cfg.specden.params.keys()]) == N_BATHS, "Incorrect number of bath parameters provided!"
     # Run the simulations.
     for sim in tqdm(range(cfg.simulation_parameters.num_sims)):
         tomo, spds, R_ij = simulation(
-            cfg.specden.type,
-            cfg.specden.random,
             cfg.specden.params,
             β,
             BETA,
