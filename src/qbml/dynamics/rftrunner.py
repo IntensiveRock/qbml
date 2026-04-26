@@ -12,7 +12,7 @@ from tqdm import tqdm
 from qbml.dynamics.simulation import simulation
 from qbml.ml.tomographydataset import TomographyDataSet
 from qbml.ml.spddb import save_spddb
-from qbml.dynamics.constants import get_constants
+import qbml.dynamics.tools as qbmltools
 
 
 @hydra.main(version_base=None)
@@ -21,8 +21,6 @@ def main(cfg: DictConfig):
     set_path = Path(cfg.prj_dir) / 'data' / cfg.title
     os.mkdir(set_path)
     output_dir = Path(hydra.core.hydra_config.HydraConfig.get().runtime.output_dir)
-
-    # HBAR, k, SoL = ...
 
     # Unit dictionaries.
     HBAR = {
@@ -49,8 +47,8 @@ def main(cfg: DictConfig):
     SoL = c[cfg.units.speed_of_light]
 
     # Model parameters.
-    ε_in_frequency = cfg.system.epsilon_frequency
-    Δ_in_frequency = cfg.system.delta_frequency
+    ε_in_frequency = 5.  #cfg.system.epsilon_frequency
+    Δ_in_frequency = 1. #  cfg.system.delta_frequency
     ε = ε_in_frequency #/ SoL  # Convert frequency to wavenumber
     Δ = Δ_in_frequency #/ SoL  # Convert frequency to wavenumber
     qubit_frequency = (Δ ** 2 + ε ** 2) ** 0.5
@@ -86,7 +84,9 @@ def main(cfg: DictConfig):
                                    len(FREQS),
                                    2))
     spd_params = []
-    assert len([key for key in cfg.specden.params.keys()]) == N_BATHS, "Incorrect number of bath parameters provided!"
+    ### Add code to record the Redfield tensor for each simulation.
+    redfield_tensors = np.zeros((cfg.simulation_parameters.num_sims, len(times), 4, 4), dtype="complex")
+    
     # Run the simulations.
     for sim in tqdm(range(cfg.simulation_parameters.num_sims)):
         tomo, spds, R_ij = simulation(
@@ -104,14 +104,16 @@ def main(cfg: DictConfig):
         for i, spd in enumerate(spds):
             spectral_densities[sim, :, i] += spd(FREQS)
         tomography[sim] += np.real(tomo)
+        redfield_tensors[sim] += R_ij
         # spd_params.append([vars(spd) for i in spds])
         spd_params.append(spds)
 
     # Create the Tomographydataset.
+    refactored_rfts = np.array([qbmltools.resize_redfield_tensor(rft) for rft in redfield_tensors])
     dataset = TomographyDataSet(tomography,
-                                spectral_densities,
+                                refactored_rfts,
                                 times,
-                                FREQS,
+                                times, # to get the dimensions right for the RFT
                                 torch.from_numpy)
     torch.save(dataset, set_path / f'{cfg.title}.ds')
     save_spddb(spd_params, cfg.title, set_path)

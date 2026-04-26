@@ -43,4 +43,4 @@ def simulation(
                       markovian_spds=mSPECDEN)
     _logger.info('Finished BCFs')
     rdm = np.array(r.propagate(ρ_0))
-    return rdm, nmSPECDEN, mSPECDEN, [r.R_nm_ij, r.R_m_ij]
+    return rdm, nmSPECDEN, mSPECDEN, [r.R_nm_ij, r.R_m_ij], r.nm_bcf, r.m_bcf

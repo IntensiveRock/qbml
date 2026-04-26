@@ -7,7 +7,7 @@ from omegaconf import DictConfig, OmegaConf
 import numpy as np
 
 from qbml.dynamics.splitsimulation import simulation
-from qbml.dynamics.splitredfield import RedfieldSummary
+from qbml.dynamics.tools import RedfieldSummary, redfield_to_hdf5
 
 
 def mnmsimrunner(cfg_pth : Path):
@@ -78,7 +78,7 @@ def mnmsimrunner(cfg_pth : Path):
                                    2))
     spd_params = []
     # Run the simulations.
-    rdms, nmspds, mspds, R_ijs = simulation(
+    rdms, nmspds, mspds, R_ijs, nm_bcf, m_bcf = simulation(
         cfg.specden.type,
         cfg.specden.random,
         cfg.specden.params,
@@ -92,16 +92,19 @@ def mnmsimrunner(cfg_pth : Path):
         SB_HAMI,
         ρ_0,
     )
-    Rmnij = R_ijs[0]
+    Rnmij = R_ijs[0]
     Rmij = R_ijs[1]
     summary = RedfieldSummary(
                 rdms=rdms,
-                nmspds=nmspds,
-                mspds=mspds,
-                Rmnij=Rmnij,
-                Rmij=Rmij,
+                bcf_m=m_bcf,
+                bcf_nm=nm_bcf,
+                nm_spds=nmspds,
+                m_spds=mspds,
+                Rnm=Rnmij,
+                Rm=Rmij,
                 times=TIMES,
                 freqs=FREQS/qubit_frequency,
                 qfreq=qubit_frequency
             )
+    redfield_to_hdf5(summary, "test")
     return summary

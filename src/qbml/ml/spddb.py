@@ -15,7 +15,7 @@ def save_spddb(spdlist : list[list[SpecDen]], name : str, pth : Path):
     coup = {0 : "x", 1 : "z"}
     for simnum, spdpair in enumerate(spdlist):
         for j, spd in enumerate(spdpair):
-            pickled_dict = pickle.dumps(vars(spd))
+            pickled_dict = pickle.dumps(spd.export_spd())
             param_tuple = (simnum, coup[j], pickled_dict)
             cur.execute("INSERT INTO spdp VALUES(?, ?, ?)", param_tuple)
     conn.commit()
