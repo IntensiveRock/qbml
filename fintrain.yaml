@@ -1,9 +1,9 @@
 # Name of model, loss, and optimizer.
 title: diditwork
-prj_dir: /home/dewdrop/pyuv/scqtest/nm
+prj_dir: ...
 wandb_cfg:
   project: qbml
-  entity: froggycham-cu-boulder-chemistry
+  entity: ...
   job_type: training
   name: diditwork
   config:
@@ -25,4 +25,4 @@ cfg_info:
 # What are the sequence lengths and how to partition the dataset.
 dataset:
   split: [0.9, 0.1]
-set_path: /home/dewdrop/pyuv/scqtest/nm/data/mnm/mnm.ds
+set_path: ...
