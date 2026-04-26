@@ -90,8 +90,6 @@ def main(cfg: DictConfig):
     # Run the simulations.
     for sim in tqdm(range(cfg.simulation_parameters.num_sims)):
         tomo, spds, R_ij = simulation(
-            cfg.specden.type,
-            cfg.specden.random,
             cfg.specden.params,
             β,
             BETA,

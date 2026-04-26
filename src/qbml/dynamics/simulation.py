@@ -33,17 +33,14 @@ def simulation(
             n_peaks_per_type = np.zeros((ntypes), dtype=int)
             spdlist = []
             for i in range(ntypes-1):
-                if np.sum(n_peaks_per_type) == coupling_params.n_peaks:
-                    break
-                else:
+                if np.sum(n_peaks_per_type) < coupling_params.n_peaks:
                     n_peaks_per_type[i] += random.randint(0,coupling_params.n_peaks-np.sum(n_peaks_per_type))
             n_peaks_per_type[-1] = coupling_params.n_peaks - np.sum(n_peaks_per_type)
             for i, spd_type in enumerate(types):
-                if int(n_peaks_per_type[i]) == 0:
-                    break
-                spd_class = getattr(SPD, spd_type)
-                coupling_params.types[spd_type].n_peaks = int(n_peaks_per_type[i])
-                spdlist.append(spd_class.rand(coupling_params.types[spd_type], qubit_frequency, BETA))
+                if int(n_peaks_per_type[i]) != 0:
+                    spd_class = getattr(SPD, spd_type)
+                    coupling_params.types[spd_type].n_peaks = int(n_peaks_per_type[i])
+                    spdlist.append(spd_class.rand(coupling_params.types[spd_type], qubit_frequency, BETA))
             SPECDEN.append(SPD.CompositeSpecDen(spdlist, random.uniform(coupling_params.total_reorg[0], coupling_params.total_reorg[1])))
 
     # Run dynamics.

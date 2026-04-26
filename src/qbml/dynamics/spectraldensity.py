@@ -312,6 +312,15 @@ class CompositeSpecDen(SpecDen):
         """Recalculated the individual spd scaling constants."""
         for spd in self.spds:
             spd.scaling_constant *= scaling_constant
+
+    def export_spd(self,):
+        """Custom for exporting multiple spds together of database."""
+        spd_dict = vars(self)
+        # create a vars() dict for each spectral density in the list and use that to override initial_dict[spds]
+        # then need a way to get them back. That should be easy enough.
+        spd_dict['spds'] = {type(spd).__name__ : vars(spd) for spd in self.spds}
+        return spd_dict
+        
         
 
 def _coth(w):

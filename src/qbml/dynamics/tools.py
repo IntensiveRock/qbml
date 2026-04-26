@@ -18,6 +18,7 @@ class RedfieldSummary:
     freqs: np.array
     qfreq: float
 
+
 def redfield_to_hdf5(summary : RedfieldSummary, fname : str):
     """
     Save a trajectory as a .hdf5 file.
@@ -43,11 +44,9 @@ def resize_redfield_tensor(rft : np.array):
     new_rft = np.zeros((ntimes, nrows*ncols*2))
     for n, r_t in enumerate(rft):
         flattened_time = np.array([[elem.real, elem.imag] for row in r_t for elem in row])
-        if n == 100:
-            print(np.concatenate(flattened_time))
         new_rft[n] += np.concatenate(flattened_time)
     return new_rft
-    
+
 
 def rand_given_range(minimum: float,
                      maximum: float,
